@@ -125,4 +125,90 @@ pub mod types {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub cache_control: Option<CacheControl>,
     }
+
+     #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct CacheControl {
+        #[serde(rename = "type")]
+        pub control_type: String,
+    }
+
+    impl CacheControl {
+        pub fn ephemeral() -> Self {
+            Self {
+                control_type: "ephemeral".to_string(),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct ApiMessage {
+        pub role: String,
+        pub content: Value,
+    }
+
+    impl From<&Message> for ApiMessage {
+        fn from(msg: &Message) -> Self {
+            let role = match msg.role {
+                Role::User => "user",
+                Role::Assistant => "assistant",
+            };
+            let content = match &msg.content {
+                MessageContent::Text(t) => Value::String(t.clone()),
+                MessageContent::Blocks(blocks) => {
+                    serde_json::to_value(blocks).unwrap_or(Value::Null)
+                }
+            };
+            Self {
+                role: role.to_string(),
+                content,
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct ApiToolDefinition {
+        pub name: String,
+        pub description: String,
+        pub input_schema: Value,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub cache_control: Option<CacheControl>,
+    }
+
+    impl From<&ToolDefinition> for ApiToolDefinition {
+        fn from(td: &ToolDefinition) -> Self {
+            Self {
+                name: td.name.clone(),
+                description: td.description.clone(),
+                input_schema: td.input_schema.clone(),
+                cache_control: None,
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, Deserialize)]
+    pub struct CreateMessageResponse {
+        pub id: String,
+        #[serde(rename = "type")]
+        pub response_type: String,
+        pub role: String,
+        pub content: Vec<Value>,
+        pub model: String,
+        pub stop_reason: Option<String>,
+        pub stop_sequence: Option<String>,
+        pub usage: UsageInfo,
+    }
+
+    #[derive(Debug, Clone, Deserialize)]
+    pub struct ApiErrorResponse {
+        #[serde(rename = "type")]
+        pub error_type: String,
+        pub error: ApiErrorDetail,
+    }
+
+    #[derive(Debug, Clone, Deserialize)]
+    pub struct ApiErrorDetail {
+        #[serde(rename = "type")]
+        pub error_type: String,
+        pub message: String,
+    }
 }
