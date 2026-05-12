@@ -341,5 +341,124 @@ pub mod types {
                     .join(""),
             }
         }
+
+        pub fn gt_tool_use_blocks(&self) -> Vec<&ContentBlock> {
+            match &self.content {
+                MessageContent::Blocks(blocks) => blocks
+                    .iter()
+                    .filter(|b| matches!(b, ContentBlock::ToolUse { .. }))
+                    .collect(),
+                _ => vec![]
+            }
+        }
+
+        pub fn get_tool_result_blocks(&self) -> Vec<&ContentBlock> {
+            match &self.content {
+                MessageContent::Blocks(blocks) => blocks
+                    .iter()
+                    .filter(|b| matches!(b, ContentBlock::ToolResult { .. }))
+                    .collect(),
+                _ => vec![],
+            }
+        }
+
+        pub fn content_blocks(&self) -> Vec<ContentBlock> {
+            match &self.content {
+                MessageContent::Text(t) => vec![ContentBlock::Text { text: t.clone() }],
+                MessageContent::Blocks(b) => b.clone()
+            }
+        }
+
+        pub fn has_tool_use(&self) -> bool {
+            !self.get_tool_result_blocks().is_empty()
+        }
+
+        pub fn user_local_command_output(command: impl Into<String>, output: impl Into<String>) -> Self {
+            Self {
+                role: Role::User,
+                content: MessageContent::Blocks(vec![ContentBlock::UserLocalCommandOutput { 
+                    command: command.into(), 
+                    output: output.into(),
+                }]),
+                uuid: None,
+                cost: None,
+                snapshot_patch: None,
+            }
+        }
+
+        pub fn user_command(name: impl Into<String>, args: impl Into<String>) -> Self {
+            Self {
+                role: Role::User,
+                content: MessageContent::Blocks(vec![ContentBlock::UserCommand { 
+                    name: name.into(), 
+                    args: args.into() 
+                }]),
+                uuid: None,
+                cost: None,
+                snapshot_patch: None,
+            }
+        }
+
+        pub fn user_memory_input(key: impl Into<String>, value: impl Into<String>) -> Self {
+            Self {
+                role: Role::User,
+                content: MessageContent::Blocks(vec![ContentBlock::UserMemoryInput { 
+                    key: key.into(), 
+                    value: value.into() 
+                }]),
+                uuid: None,
+                cost: None,
+                snapshot_patch: None,
+            }
+        }
+
+        pub fn system_api_error(message: impl Into<String>, retry_secs: Option<u32>) -> Self {
+            Self {
+                role: Role::User,
+                content: MessageContent::Blocks(vec![ContentBlock::SystemAPIError {
+                    message: message.into(),
+                    retry_secs,
+                }]),
+                uuid: None,
+                cost: None,
+                snapshot_patch: None,
+            }
+        }
+
+        pub fn collapsed_read_search(
+            tool_name: impl Into<String>,
+            paths: Vec<String>,
+            n_hidden: usize,
+        ) -> Self {
+            Self {
+                role: Role::User,
+                content: MessageContent::Blocks(vec![ContentBlock::CollapsedReadSearch {
+                    tool_name: tool_name.into(),
+                    paths,
+                    n_hidden,
+                }]),
+                uuid: None,
+                cost: None,
+                snapshot_patch: None,
+            }
+        }
+
+        pub fn task_assignment(
+            id: impl Into<String>,
+            subject: impl Into<String>,
+            description: impl Into<String>,
+        ) -> Self {
+            Self {
+                role: Role::User,
+                content: MessageContent::Blocks(vec![ContentBlock::TaskAssignment {
+                    id: id.into(),
+                    subject: subject.into(),
+                    description: description.into(),
+                }]),
+                uuid: None,
+                cost: None,
+                snapshot_patch: None,
+            }
+        }
     }
 }
