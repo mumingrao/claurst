@@ -461,4 +461,166 @@ pub mod types {
             }
         }
     }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+    pub struct MessageCost {
+        pub input_tokens: u64,
+        pub output_tokens: u64,
+        pub cache_creation_input_tokens: u64,
+        pub cache_read_input_tokens: u64,
+        pub cost_usd: f64,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct ToolDefinition {
+        pub name: String,
+        pub description: String,
+        pub input_schema: Value,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+    pub struct UsageInfo {
+        pub input_tokens: u64,
+        pub output_tokens: u64,
+        #[serde(default)]
+        pub cache_creation_input_tokens: u64,
+        #[serde(default)]
+        pub cache_read_input_tokens: u64,
+    }
+
+    impl UsageInfo {
+        pub fn total_input(&self) -> u64 {
+            self.input_tokens + self.cache_creation_input_tokens + self.cache_read_input_tokens
+        }
+
+        pub fn total(&self) -> u64 {
+            self.total_input() + self.output_tokens
+        }
+    }
+}
+
+pub mod config {
+    use serde::{Deserialize, Serialize};
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+    #[serde(rename_all = "PascalCase")]
+    pub enum HookEvent {
+        PreToolUse,
+        PostToolUse,
+        Stop,
+        PostModelTurn,
+        UserPromptSubmit,
+        Notification,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+    pub struct HookEntry {
+        pub command: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub tool_filter: Option<String>,
+        #[serde(default)]
+        pub blocking: bool,
+    }
+
+    fn default_agent_access() -> String {
+        "full".to_string()
+    }
+
+    fn default_true() -> bool {
+        true
+    }
+
+    /// Definition of a named agent with per-agent model, permissions,
+    /// temperature, and system prompt.
+    pub fn api_key_env_vars_for_provider(provider_id: &str) -> &'static [&'static str] {
+        match provider_id {
+            "anthropic" => &["ANTHROPIC_API_KEY"],
+            "openai" => &["OPENAI_API_KEY"],
+            "google" | "google-vertex" => &["GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"],
+            "github-copilot" => &["GITHUB_TOKEN"],
+            "groq" => &["GROQ_API_KEY"],
+            "cerebras" => &["CEREBRAS_API_KEY"],
+            "sambanova" => &["SAMBANOVA_API_KEY"],
+            "deepseek" => &["DEEPSEEK_API_KEY"],
+            "mistral" => &["MISTRAL_API_KEY"],
+            "openrouter" => &["OPENROUTER_API_KEY"],
+            "togetherai" | "together-ai" => &["TOGETHER_API_KEY"],
+            "perplexity" => &["PERPLEXITY_API_KEY"],
+            "cohere" => &["COHERE_API_KEY"],
+            "xai" => &["XAI_API_KEY"],
+            "deepinfra" => &["DEEPINFRA_API_KEY"],
+            "azure" => &["AZURE_API_KEY"],
+            "gitlab" => &["GITLAB_TOKEN"],
+            "huggingface" => &["HF_TOKEN"],
+            "nvidia" => &["NVIDIA_API_KEY"],
+            "alibaba" | "qwen" => &["DASHSCOPE_API_KEY"],
+            "venice" => &["VENICE_API_KEY"],
+            "moonshot" | "moonshotai" => &["MOONSHOT_API_KEY"],
+            "zhipu" | "zhipuai" => &["ZHIPU_API_KEY"],
+            "zai" => &["ZAI_API_KEY"],
+            "siliconflow" => &["SILICONFLOW_API_KEY"],
+            "nebius" => &["NEBIUS_API_KEY"],
+            "novita" => &["NOVITA_API_KEY"],
+            "minimax" => &["MINIMAX_API_KEY"],
+            "ovhcloud" => &["OVHCLOUD_API_KEY"],
+            "scaleway" => &["SCALEWAY_API_KEY"],
+            "vultr" | "vultr-ai" => &["VULTR_API_KEY"],
+            "baseten" => &["BASETEN_API_KEY"],
+            "friendli" => &["FRIENDLI_TOKEN"],
+            "upstage" => &["UPSTAGE_API_KEY"],
+            "stepfun" => &["STEPFUN_API_KEY"],
+            "fireworks" => &["FIREWORKS_API_KEY"],
+            "cloudflare" | "cloudflare-ai-gateway" | "cloudflare-workers-ai" => {
+                &["CLOUDFLARE_API_TOKEN"]
+            }
+            "vercel" => &["AI_GATEWAY_API_KEY"],
+            "helicone" => &["HELICONE_API_KEY"],
+            "sap" | "sap-ai-core" => &["AICORE_SERVICE_KEY"],
+            _ => &[],
+        }
+    }
+
+    pub fn primary_api_key_env_var_for_provider(provider_id: &str) -> Option<&'static str> {
+        api_key_env_vars_for_provider(provider_id).first().copied()
+    }
+
+    pub fn api_base_env_var_for_provider(provider_id: &str) -> Option<&'static str> {
+        match provider_id {
+            "anthropic" => Some("ANTHROPIC_BASE_URL"),
+            "openai" => Some("OPENAI_BASE_URL"),
+            "minimax" => Some("MINIMAX_BASE_URL"),
+            "ollama" => Some("OLLAMA_HOST"),
+            "lmstudio" | "lm-studio" => Some("LM_STUDIO_HOST"),
+            "llamacpp" | "llama-cpp" | "llama-server" => Some("LLAMA_CPP_HOST"),
+            _ => None,
+        }
+    }
+
+    pub fn default_api_base_for_provider(provider_id: &str) -> Option<&'static str> {
+        match provider_id {
+            "anthropic" => Some(crate::constants::ANTHROPIC_API_BASE),
+            "openai" => Some("https://api.openai.com"),
+            "minimax" => Some("https://api.minimax.io/anthropic"),
+            "ollama" => Some("http://localhost:11434"),
+            "lmstudio" | "lm-studio" => Some("http://localhost:1234"),
+            "llamacpp" | "llama-cpp" | "llama-server" => Some("http://localhost:8080"),
+            _ => None,
+        }
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct AgentDefinition {
+        pub description: Option<String>,
+        pub model: Option<String>,
+        pub temperature: Option<f64>,
+        pub prompt: Option<String>,
+        #[serde(default = "default_agent_access")]
+        pub access: String,
+        #[serde(default = "default_true")]
+        pub visible: bool,
+        pub max_turns: Option<u32>,
+        pub color: Option<String>,
+    }
 }
