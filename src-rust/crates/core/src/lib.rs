@@ -2,6 +2,8 @@ pub mod provider_id;
 pub use provider_id::{ProviderId, ModelId};
 
 pub mod session_storage;
+
+pub mod sqlite_storage;
 pub use sqlite_storage::{SqliteSessionStore, SessionSummary};
 
 pub mod attachments;
